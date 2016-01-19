@@ -629,7 +629,7 @@ class TodoNode(AbstractNode):
     Represents a todo node or subnode
     """
     
-    __slots__ = ("categories", "isRightSide")
+    __slots__ = ("categories", "isRightSide", "label")
             
     def __init__(self, tree, parentNode, cats):  # , isRightSide=False):
         """
@@ -640,8 +640,12 @@ class TodoNode(AbstractNode):
         """
         AbstractNode.__init__(self, tree, parentNode)
         self.categories = cats
+        # todo cats[-1] may be a todo value i.e. may contains dots and slashes i.e. unifiedName maybe is not unique
         self.unifiedName = u"todo/" + u".".join(self.categories)
-
+        if len(self.categories) > 0:
+            self.label = self.categories[-1]
+        else:
+            self.label = u""
 
     def getNodePresentation(self):
         style = NodeStyle()
@@ -666,7 +670,7 @@ class TodoNode(AbstractNode):
                         setattr(style, key, value)
 
         if style.label == u"":
-            style.label = self.categories[-1]
+            style.label = self.label
         if style.icon == u"":
             style.icon = "pin"
 
@@ -1527,8 +1531,10 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
         if currentNode is not None and currentNode.IsOk():
             node = self.GetPyData(currentNode)
             if node.representsWikiWord():                    
-                if self.pWiki.getWikiDocument()\
-                        .getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
+                currentDoc = self.pWiki.getWikiDocument()
+                # currentDoc may be None during close of first of two windows
+                if currentDoc:
+                    if currentDoc.getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
                         currentWikiWord:  #  and currentWikiWord is not None:
                     return  # Is already on word -> nothing to do
 #                 if currentWikiWord is None:

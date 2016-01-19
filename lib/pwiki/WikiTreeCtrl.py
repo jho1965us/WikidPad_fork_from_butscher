@@ -819,7 +819,7 @@ class AttrCategoryNode(AbstractNode):
 
     __slots__ = ("categories", "propIcon")
 
-    def __init__(self, tree, parentNode, cats, attributeIcon=u"page"):
+    def __init__(self, tree, parentNode, cats, attributeIcon=u"tag-empty"):
         AbstractNode.__init__(self, tree, parentNode)
         self.categories = cats
         self.propIcon = attributeIcon
@@ -830,7 +830,7 @@ class AttrCategoryNode(AbstractNode):
         style = NodeStyle()
         globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
         key = u".".join(self.categories)
-        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), u"page")
+        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), u"tag-empty")
 
         style.icon = attributeIcon   # u"page"  # self.propIcon
         style.label = self.categories[-1]
@@ -909,7 +909,7 @@ class AttrValueNode(AbstractNode):
     
     __slots__ = ("categories", "value", "propIcon")
             
-    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"page"):
+    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"tag"):
         AbstractNode.__init__(self, tree, parentNode)
         self.categories = cats
         self.value = value
@@ -922,7 +922,7 @@ class AttrValueNode(AbstractNode):
 
     def getNodePresentation(self):
         style = NodeStyle()
-        style.icon = u"page"
+        style.icon = u"tag"
         style.label = self.value
         style.hasChildren = True
         return style

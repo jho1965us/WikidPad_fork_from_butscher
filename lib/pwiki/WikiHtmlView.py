@@ -166,6 +166,8 @@ class WikiHtmlView(wx.html.HtmlWindow):
                 self.OnActivateNewTabBackgroundThis)
         wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_WINDOW_THIS,
                 self.OnActivateNewWindowThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_LINK_WORD,
+                self.OnClipboardCopyLinkWord)
 
         wx.EVT_MENU(self, GUI_ID.CMD_OPEN_CONTAINING_FOLDER_THIS,
                 self.OnOpenContainingFolderThis)
@@ -598,6 +600,9 @@ class WikiHtmlView(wx.html.HtmlWindow):
     def OnActivateNewWindowThis(self, evt):
         self._activateLink(self.contextHref, tabMode=6)
 
+    def OnClipboardCopyLinkWord(self, evt):
+        self._activateLink(self.contextHref, tabMode=1024)
+
 
     def OnOpenContainingFolderThis(self, evt):
         if not self.contextHref:
@@ -726,6 +731,7 @@ Activate;CMD_ACTIVATE_THIS
 Activate New Tab;CMD_ACTIVATE_NEW_TAB_THIS
 Activate New Tab Backgrd.;CMD_ACTIVATE_NEW_TAB_BACKGROUND_THIS
 Activate New Window;CMD_ACTIVATE_NEW_WINDOW_THIS
+Copy Word to Clipboard;CMD_CLIPBOARD_COPY_LINK_WORD
 """
 
 
@@ -735,4 +741,4 @@ if False:
     N_(u"Activate New Tab")
     N_(u"Activate New Tab Backgrd.")
     N_(u"Activate New Window")
-
+    N_(u"Copy WikiWord to Clipboard")

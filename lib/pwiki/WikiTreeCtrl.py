@@ -1531,8 +1531,10 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
         if currentNode is not None and currentNode.IsOk():
             node = self.GetPyData(currentNode)
             if node.representsWikiWord():                    
-                if self.pWiki.getWikiDocument()\
-                        .getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
+                currentDoc = self.pWiki.getWikiDocument()
+                # currentDoc may be None during close of first of two windows
+                if currentDoc:
+                    if currentDoc.getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
                         currentWikiWord:  #  and currentWikiWord is not None:
                     return  # Is already on word -> nothing to do
 #                 if currentWikiWord is None:

@@ -306,7 +306,10 @@ class WikiWordNode(AbstractNode):
         wikiPage = wikiDataManager.getWikiPageNoError(self.wikiWord)
 
         style = NodeStyle()
-        
+
+        if not wikiData.isDefinedWikiLink(self.wikiWord):
+            style.icon = u"page-empty";  # todo should this be enforced even if a template specifes some other image? 
+
         style.label = baselabel
 
         # Has children?

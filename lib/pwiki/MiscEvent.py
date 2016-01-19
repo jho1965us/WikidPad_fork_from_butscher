@@ -432,6 +432,10 @@ class MiscEvent(object):
         """
         event = self.createClone(shareListenerList=shareListenerList)
         event.properties.update(addprops)
+        if event.properties.has_key("original sources"):
+            event.properties["original sources"] = event.properties["original sources"] + [self.source]
+        else:
+            event.properties["original sources"] = [self.source]
         return event
 
     def createCloneAddKeys(self, addkeys, shareListenerList=False):
@@ -442,6 +446,7 @@ class MiscEvent(object):
         @param addkeys  Sequence with additional keys for properties
         """
         event = self.createClone(shareListenerList=shareListenerList)
+        event.properties["original sources"] = [self.source]
         for k in addkeys:
             event.properties[k] = True
         return event

@@ -48,6 +48,9 @@ class BasicDocPagePresenter(LayeredControlPresenter):
         
         self.getMainControl().getMiscEvent().addListener(self)
 
+        self.trackActiveTab = False
+        self.lastTrackedPresenter = None
+
 
     def getMainControl(self):
         return self.mainControl
@@ -143,15 +146,57 @@ class BasicDocPagePresenter(LayeredControlPresenter):
                 "changed live text": True, "changer": changer})
 
 
+    def hasLastTrackedPresenter(self):
+        return self.trackActiveTab and self.lastTrackedPresenter is not None
+
+
+    def getLastTrackedPresenter(self):
+        return self.lastTrackedPresenter
+
+
+    def setTrackActiveTab(self, trackActiveTab):
+        self.trackActiveTab = trackActiveTab
+        docPagePresenter = self.getMainControl().getCurrentDocPagePresenter()
+        if self is docPagePresenter:
+            self.lastTrackedPresenter = None
+        else:
+            self.lastTrackedPresenter = docPagePresenter
+            self._trackActiveTab(docPagePresenter)
+
+
+    def _trackActiveTab(self, docPagePresenter):
+        unifName = u"wikipage/" + docPagePresenter.getDocPage().getWikiPageName()
+        trackedTextedit = docPagePresenter.subControls['textedit']
+        self.openDocPage(unifName, motionType="random",
+                firstcharpos=trackedTextedit.SelectionStart,
+                charlength=trackedTextedit.SelectionEnd - trackedTextedit.SelectionStart)
+
+
     def miscEventHappened(self, miscevt):
         """
         Handle misc events
         """
+        if not miscevt.has_key("idle visible"):
+            pass # potential break point here (avoid breaking on spam)
         if miscevt.getSource() is self.getMainControl():
-            # TODO? Check if mainControl's current presenter is this one
-            self.fireMiscEventProps(miscevt.getProps())
+            if (miscevt.has_key("changed current presenter") or 
+                (miscevt.has_key("forward from current presenter") and 
+                 miscevt.getProps()["forward from current presenter"].has_key("loaded current wiki page"))):
+                docPagePresenter = miscevt.getSource().getCurrentDocPagePresenter()
+                if self.trackActiveTab and self is not docPagePresenter:
+                    self.lastTrackedPresenter = docPagePresenter
+                if (self.trackActiveTab or
+                    (docPagePresenter.trackActiveTab and self is docPagePresenter.lastTrackedPresenter)):
+                    self._trackActiveTab(docPagePresenter)
+            if not miscevt.has_key("presenter forward"):
+                # TODO? Check if mainControl's current presenter is this one
+                p2 = miscevt.getProps().copy()
+                p2.update({"presenter forward": True})
+                self.fireMiscEventProps(p2)
 
         elif miscevt.getSource() is self.docPage:
+            if miscevt.has_key("visited doc page") and self.trackActiveTab:
+                pass # potential break point here (avoid breaking on spam)
 #             if miscevt.has_key("changed editor text"):
 #                 self.fireMiscEventProps(miscevt.getProps())
 #             elif miscevt.has_key("deleted page"):

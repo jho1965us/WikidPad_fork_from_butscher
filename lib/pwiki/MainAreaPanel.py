@@ -104,6 +104,8 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
         wx.EVT_MENU(self, GUI_ID.CMD_GO_PREVIOUS_TAB, self.OnGoTab)
         wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_URL_TO_THIS_WIKIWORD,
                 self.OnCmdClipboardCopyUrlToThisWikiWord)
+        wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_WIKIWORD,
+                self.OnCmdClipboardCopyWikiWord)
 
     def close(self):
         for p in self.getPresenters():
@@ -750,6 +752,20 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
 
         path = self.mainControl.getWikiDocument().getWikiConfigPath()
         copyTextToClipboard(pathWordAndAnchorToWikiUrl(path, wikiWord, None))
+
+
+    def OnCmdClipboardCopyWikiWord(self, evt):
+        if not isinstance(self.lastContextMenuPresenter, BasicDocPagePresenter):
+            return
+
+        wikiWord = self.lastContextMenuPresenter.getWikiWord()
+        if wikiWord is None:
+            wx.MessageBox(
+                    _(u"This can only be done for the page of a wiki word"),
+                    _(u'Not a wiki page'), wx.OK, self)
+            return
+
+        copyTextToClipboard(wikiWord)
 
 
     def OnTabMiddleDown(self, evt):

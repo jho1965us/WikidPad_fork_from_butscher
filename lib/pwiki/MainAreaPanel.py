@@ -106,6 +106,8 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
                 self.OnCmdClipboardCopyUrlToThisWikiWord)
         wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_WIKIWORD,
                 self.OnCmdClipboardCopyWikiWord)
+        wx.EVT_MENU(self, GUI_ID.CMD_TRACK_ACTIVE_TAB,
+                self.OnCmdTrackActiveTab)
 
     def close(self):
         for p in self.getPresenters():
@@ -768,6 +770,13 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
         copyTextToClipboard(wikiWord)
 
 
+    def OnCmdTrackActiveTab(self, evt):
+        if not isinstance(self.lastContextMenuPresenter, BasicDocPagePresenter):
+            return
+
+        self.lastContextMenuPresenter.setTrackActiveTab(evt.IsChecked())
+
+
     def OnTabMiddleDown(self, evt):
         #tab = evt.GetSelection()
         #if tab == wx.NOT_FOUND:
@@ -786,6 +795,8 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
 
 
     def miscEventHappened(self, miscevt):
+        if not miscevt.has_key("idle visible"):
+            pass # potential break point here (avoids breaking on spam)
         idx = self.GetPageIndex(miscevt.getSource())
         if idx != wx.NOT_FOUND:
             if miscevt.has_key("changed presenter title"):
@@ -800,6 +811,9 @@ class MainAreaPanel(aui.AuiNotebook, MiscEventSourceMixin, StorablePerspective):
             if miscevt.has_key("closed current wiki"):
                 # self._closeAllButCurrentTab()
                 self._closeAllTabs()
+
+        if miscevt.getSource() is self.getCurrentPresenter() and not miscevt.has_key("presenter forward"):
+            self.fireMiscEventProps({"forward from current presenter": miscevt.getProps()})
 
 
 # ----- Implementation of StorablePerspective methods -----

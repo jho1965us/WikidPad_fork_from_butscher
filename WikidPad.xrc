@@ -5427,6 +5427,12 @@
       <label>Copy WikiWord to clipboard</label>
       <help>Copy the name for current page to the clipboard</help>
     </object>
+    <object class="wxMenuItem" name="CMD_TRACK_ACTIVE_TAB">
+      <label>Track active tab</label>
+      <help>When the active tab change word or cursor location so does this tab</help>
+      <checkable>1</checkable>
+      <checked>0</checked>
+    </object>
   </object>
   <object class="wxMenu" name="MenuSearchResultTabPopup">
     <object class="wxMenuItem" name="CMD_CLOSE_THIS_TAB">

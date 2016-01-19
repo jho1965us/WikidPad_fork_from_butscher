@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<resource>
+<resource xmlns="http://www.wxwidgets.org/wxxrc">
   <object class="wxDialog" name="DateformatDialog">
     <title>Choose date format</title>
     <centered>1</centered>
@@ -5421,7 +5421,11 @@
     </object>
     <object class="wxMenuItem" name="CMD_CLIPBOARD_COPY_URL_TO_THIS_WIKIWORD">
       <label>Copy URL to clipboard</label>
-      <help>Copy full &quot;wiki:&quot; URL of the word to clipboard</help>
+      <help>Copy full &quot;wiki:&quot; URL of the word to the clipboard</help>
+    </object>
+    <object class="wxMenuItem" name="CMD_CLIPBOARD_COPY_WIKIWORD">
+      <label>Copy WikiWord to clipboard</label>
+      <help>Copy the name for current page to the clipboard</help>
     </object>
   </object>
   <object class="wxMenu" name="MenuSearchResultTabPopup">

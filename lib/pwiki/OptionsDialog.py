@@ -428,6 +428,7 @@ class OptionsDialog(wx.Dialog):
             ("hideundefined", "cbHideUndefinedWords", "b"),
             ("tree_no_cycles", "cbTreeNoCycles", "b"),
             ("tree_autohide", "cbTreeAutoHide", "b"),
+            ("tree_parentSingleChildMerge", "cbTreeParentSingleChildMerge", "b"),
             ("tree_bg_color", "tfTreeBgColor", "color0",
                     "btnSelectTreeBgColor"),
             ("tree_font_nativeDesc", "tfTreeFontNativeDesc", "tfont0",

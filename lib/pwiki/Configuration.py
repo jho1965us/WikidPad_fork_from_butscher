@@ -621,6 +621,7 @@ GLOBALDEFAULTS = {
     ("main", "tree_update_after_save"): "True", # The tree is updated after a save
     ("main", "tree_no_cycles"): "False", # Cycles in tree like NodeA -> NodeB -> NodeA are not shown
     ("main", "tree_autohide"): "False", # Automatically hide tree(s) after something was selected in it.
+    ("main", "tree_parentSingleChildMerge"): "False", # Merge attribute or todo parent node with single child node.
     ("main", "tree_bg_color"): "",  # Background color of the trees
 
     ("main", "tree_font_nativeDesc"): u"",  # Data about tree font. If empty, default font is used

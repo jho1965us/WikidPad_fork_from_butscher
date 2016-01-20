@@ -693,15 +693,55 @@ class TodoNode(AbstractNode):
         return super(TodoNode, self).onActivated()
 
 
+    def _getChildNode(self, c, catsList):
+        cats = self.categories + (c,)
+
+        if not self.treeCtrl.pWiki.getConfig().getboolean("main", "tree_parentSingleChildMerge", False): #TODO cache flag value
+            return TodoNode(self.treeCtrl, self, cats)
+
+        #check for shared path
+        first = catsList[0][1].split(u".") + [catsList[0][2]]  # TODO "." is Language dependent: Remove
+        start = len(self.categories)+1
+        stop = len(first)
+        max = stop
+        min = stop
+        for i in range(1, len(catsList)):
+            next = catsList[i][1].split(u".") + [catsList[i][2]]  # TODO "." is Language dependent: Remove
+            if max < len(next):
+                max = len(next)
+            if min > len(next):
+                min = len(next)
+            for j in range(start, stop):
+                if j >= len(next) or first[j] != next[j]:
+                    stop = j
+                    break
+
+        for j in range(start, stop):
+            cats += (first[j],)
+        result = TodoNode(self.treeCtrl, self, cats)
+
+        if start < stop:
+            # shared path longer than one found
+            if stop == max:
+                result.label = u".".join(first[len(self.categories):-1])+ u": " + first[-1]
+            #elif stop >= min:
+            #    # ambiguity 'x.y: z' or 'x.y.z'?
+            #    result.label = u".".join(first[start:-2])+ u": " + first[:-1]
+            else:
+                result.label = u".".join(first[len(self.categories):stop])
+
+        return result
+
     def listChildren(self):
         """
         Returns a sequence of Nodes for the children of this node.
         This is called before expanding the node
         """
         wikiData = self.treeCtrl.pWiki.getWikiData()
-        addedTodoSubCategories = []
+        addedCats = {}
         addedWords = []
-        for (wikiWord, todoKey, todoValue) in wikiData.getTodos():
+        for todo in wikiData.getTodos():
+            wikiWord, todoKey, todoValue = todo
             # parse the todo for name and value
             wikiDocument = self.treeCtrl.pWiki.getWikiDocument()
 #             langHelper = wx.GetApp().createWikiLanguageHelper(
@@ -726,8 +766,11 @@ class TodoNode(AbstractNode):
 
                 nextSubCategory = entryCats[len(self.categories)]
 
-                if nextSubCategory not in addedTodoSubCategories:
-                    addedTodoSubCategories.append(nextSubCategory)
+                if nextSubCategory not in addedCats:
+                    addedCats[nextSubCategory] = []
+                addedCats[nextSubCategory].append(todo)
+
+        addedTodoSubCategories = list(addedCats.keys())
 
         collator = self.treeCtrl.pWiki.getCollator()
         
@@ -748,7 +791,7 @@ class TodoNode(AbstractNode):
 
         result = []
         # First list real categories, then right sides, then words
-        result += [TodoNode(self.treeCtrl, self, self.categories + (c,))
+        result += [self._getChildNode(c, addedCats[c])
                 for c in addedTodoSubCategories]
 
 #         result += [TodoNode(self.treeCtrl, self, self.categories + (c,),
@@ -826,6 +869,9 @@ class AttrCategoryNode(AbstractNode):
         self.unifiedName = u"helpernode/propcategory/" + \
                 u".".join(self.categories)
 
+    def getName(self):
+        return u".".join(self.categories)
+
     def getNodePresentation(self):   # TODO Retrieve prop icon here
         style = NodeStyle()
         globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
@@ -841,6 +887,22 @@ class AttrCategoryNode(AbstractNode):
         style.label = self.categories[-1]
         style.hasChildren = True
         return style
+
+    def _getAttrCategoryNode(self, c):
+        name = c
+        result = AttrCategoryNode(self.treeCtrl, self, self.categories + (name,))
+        
+        if not self.treeCtrl.pWiki.getConfig().getboolean("main", "tree_parentSingleChildMerge", False): #TODO cache flag value
+            return result
+
+        while True:
+            (value, type) = result._isSingleChild()
+            if type == u"value":
+                return AttrCategoryValueNode(self.treeCtrl, self, self.categories + (name,), value)
+            if type != u"child":
+                return result
+            name += u"." + value
+            result = AttrCategoryCategoryNode(self.treeCtrl, self, self.categories + (name,))
 
     def listChildren(self):
         wikiData = self.treeCtrl.pWiki.getWikiData()
@@ -860,8 +922,7 @@ class AttrCategoryNode(AbstractNode):
             
         subCats = list(addedSubCategories)
         self.treeCtrl.pWiki.getCollator().sort(subCats)
-        result += map(lambda c: AttrCategoryNode(self.treeCtrl, self,
-                self.categories + (c,)), subCats)
+        result.extend(map(lambda c: self._getAttrCategoryNode(c), subCats))
                 
         # Now the values:
         vals = wikiDocument.getDistinctAttributeValuesByKey(u".".join(self.categories))
@@ -884,7 +945,42 @@ class AttrCategoryNode(AbstractNode):
             result = result[0].listChildren()
 
         return result
-        
+
+    def _isSingleChild(self):
+        wikiData = self.treeCtrl.pWiki.getWikiData()
+        wikiDocument = self.treeCtrl.pWiki.getWikiDocument()
+
+        child = None
+        key = u".".join(self.categories + (u"",))
+
+        # Start with subcategories
+        for name in wikiData.getAttributeNamesStartingWith(key):
+            cats = name[len(key):].split(u".", 2)
+            if child is None:
+                # Cut off uninteresting
+                child = cats[0]
+            elif child != cats[0]:
+                return (None, None)
+
+        if child is None:
+            allowedVals = 1
+        else:
+            allowedVals = 0
+
+        # Now the values:
+        vals = wikiDocument.getDistinctAttributeValuesByKey(self.getName())
+        if len(vals) > allowedVals:
+            return (None, None)
+        if len(vals) == 1:
+            value = list(vals)[0]
+            if value == u'': # and vals[0] != u'true':
+                # special tree layout not compatible with parent single child merge
+                return (None, None)
+            return (value, u"value")
+        if child is not None:
+            return (child, u"child")
+        return (None, None)
+
 
     def onActivated(self):
         children = self.listChildren()
@@ -905,6 +1001,19 @@ class AttrCategoryNode(AbstractNode):
         """
         return AbstractNode.nodeEquality(self, other) and \
                 self.categories == other.categories
+
+
+class AttrCategoryCategoryNode(AttrCategoryNode):
+    """
+    Represent an AttrCategoryNode and its only AttrCategoryNode descendant
+    """
+    def __init__(self, tree, parentNode, cats, attributeIcon=u"tag-3-stack-empty"):
+        AttrCategoryNode.__init__(self, tree, parentNode, cats, attributeIcon)
+
+    #def getNodePresentation(self):
+    #    style = AttrCategoryNode.getNodePresentation(self)
+    #    style.label = self.categories[-1]
+    #    return style
 
 
 class AttrValueNode(AbstractNode):
@@ -973,6 +1082,21 @@ class AttrValueNode(AbstractNode):
         return AbstractNode.nodeEquality(self, other) and \
                 self.categories == other.categories and \
                 self.value == other.value
+
+
+class AttrCategoryValueNode(AttrValueNode):
+    """
+    Represent an AttrCategoryNode and its only AttrValueNode descendant
+    """
+    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"tag-3-stack"):
+        AttrValueNode.__init__(self, tree, parentNode, cats, value, attributeIcon)
+        self.label = self.categories[-1] + u": " + self.value
+        self.unifiedName = u"helpernode/propvalue/" + u".".join(self.categories) + u": " + self.value
+
+    def getNodePresentation(self):
+        style = AttrValueNode.getNodePresentation(self)
+        style.label = self.label
+        return style
 
 
 class WikiWordAttributeSearchNode(WikiWordRelabelNode):
@@ -1557,7 +1681,7 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
                 if currentDoc:
                     if currentDoc.getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
                         currentWikiWord:  #  and currentWikiWord is not None:
-                    return  # Is already on word -> nothing to do
+                        return  # Is already on word -> nothing to do
 #                 if currentWikiWord is None:
 #                     self.Unselect()
 #                     return

@@ -4,3 +4,5 @@
 /.hgtags
 WikidPad.pyproj.user
 *.suo
+*.pyc
+WikidPadHelp/WikidPadHelp.wiki.lock

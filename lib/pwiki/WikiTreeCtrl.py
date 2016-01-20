@@ -830,9 +830,14 @@ class AttrCategoryNode(AbstractNode):
         style = NodeStyle()
         globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
         key = u".".join(self.categories)
-        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), u"tag-empty")
+        attributeIcon = self.propIcon
+        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), attributeIcon) # for backward compatibility
 
-        style.icon = attributeIcon   # u"page"  # self.propIcon
+        style.icon = attributeIcon   # u"tag-empy"  # self.propIcon
+        for p in _SETTABLE_ATTRS:
+            v = globalAttrs.get(u"global.attr.%s.%s" % (key, p), getattr(style, p))
+            if v is not None:
+                setattr(style, p, v)
         style.label = self.categories[-1]
         style.hasChildren = True
         return style
@@ -922,7 +927,20 @@ class AttrValueNode(AbstractNode):
 
     def getNodePresentation(self):
         style = NodeStyle()
-        style.icon = u"tag"
+        globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+        key = u".".join(self.categories)
+        keyValue = key
+        if self.value is not None:
+            keyValue = key + u"." + self.value;
+        attributeIcon = self.propIcon
+        attributeIcon = globalAttrs.get(u"global.%s.icon" % (keyValue), attributeIcon) # for backward compatibility
+
+        style.icon = attributeIcon   # u"tag"  # self.propIcon
+        for p in _SETTABLE_ATTRS:
+            v = globalAttrs.get(u"global.attr-value.%s.%s" % (key, p), getattr(style, p))
+            v = globalAttrs.get(u"global.attr-value.%s.%s" % (keyValue, p), v)
+            if v is not None:
+                setattr(style, p, v)
         style.label = self.value
         style.hasChildren = True
         return style

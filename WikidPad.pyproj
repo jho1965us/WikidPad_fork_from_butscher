@@ -267,6 +267,8 @@
     <Content Include="bld.bat">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="icons\tag-empty.gif" />
+    <Content Include="icons\tag.gif" />
     <Content Include="langlist.txt" />
     <Content Include="license-spelladdon.txt" />
     <Content Include="license.txt" />

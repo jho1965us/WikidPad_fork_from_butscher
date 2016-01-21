@@ -1,5 +1,7 @@
 ﻿++ Attribute Test
 
+[test:]
+
 +++ Parent SingleChild Merge
 [test.AttributeTest.SingleChildParent1.SingleChild: SingleValue]
 [test.AttributeTest.SingleChildParent2.SingleChild: Value1]
@@ -40,6 +42,8 @@
 [global.attr-value.test.AttributeTest.SingleChildParent2b.SingleChild.ValuePositioned.tree_position: 2]
 [global.attr.test.AttributeTest.SingleChildParent3b.SingleChild.GrandChildPositioned.tree_position: 2]
 
++++ Show global attributes with suffix-name nodes also as ref under  name
 
+[global.test.icon: graduate]
 
 +++ .

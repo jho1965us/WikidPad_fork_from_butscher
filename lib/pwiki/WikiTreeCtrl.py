@@ -854,6 +854,50 @@ class WikiWordTodoSearchNode(WikiWordRelabelNode):
             return
 
 
+def AttrArrange(prefix, names, treeCtrl):
+    positioned = []
+    other = []
+    globalAttrs = treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+
+    # Put names into their appropriate arrays
+    for name in names:
+        tree_position = globalAttrs.get(u"global.%s%s.tree_position" % (prefix, name), None)
+        try:
+            if tree_position is not None:
+                positioned.append((int(tree_position) - 1, name))
+            else:
+                other.append(name)
+        except:
+            other.append(name)
+
+    # Sort special arrays
+    positioned.sort(key=lambda t: t[0])
+
+    result = []
+    ipo = 0
+    iot = 0
+
+    for i in xrange(len(names)):
+        if ipo < len(positioned) and positioned[ipo][0] <= i:
+            result.append(positioned[ipo][1])
+            ipo += 1
+            continue
+            
+        if iot < len(other):
+            result.append(other[iot])
+            iot += 1
+            continue
+            
+        # When reaching this, only positioned can have elements yet
+        if ipo < len(positioned):
+            result.append(positioned[ipo][1])
+            ipo += 1
+            continue
+            
+        raise InternalError("Empty attribute sorting arrays")
+    
+    return result
+
 
 class AttrCategoryNode(AbstractNode):
     """
@@ -922,11 +966,13 @@ class AttrCategoryNode(AbstractNode):
             
         subCats = list(addedSubCategories)
         self.treeCtrl.pWiki.getCollator().sort(subCats)
+        subCats = AttrArrange(u"attr." + key, subCats, self.treeCtrl)
         result.extend(map(lambda c: self._getAttrCategoryNode(c), subCats))
-                
+
         # Now the values:
         vals = wikiDocument.getDistinctAttributeValuesByKey(u".".join(self.categories))
         self.treeCtrl.pWiki.getCollator().sort(vals)
+        vals = AttrArrange(u"attr-value." + key, vals, self.treeCtrl)
 
         for v in vals:
             vn = AttrValueNode(self.treeCtrl, self, self.categories, v)

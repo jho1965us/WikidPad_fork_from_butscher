@@ -1,0 +1,7 @@
+﻿++ Tests
+
+todo.bug: These test pages should be in a test wiki
+
+AttributeTest
+AliasTest1
+AliasTest2

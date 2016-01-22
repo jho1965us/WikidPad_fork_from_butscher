@@ -15,7 +15,8 @@
     <RootNamespace>WikidPad</RootNamespace>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>..\MyWikidPadWiki\MyWikidPadWiki.wiki</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -267,6 +268,8 @@
     <Content Include="bld.bat">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="icons\tag-empty.gif" />
+    <Content Include="icons\tag.gif" />
     <Content Include="langlist.txt" />
     <Content Include="license-spelladdon.txt" />
     <Content Include="license.txt" />

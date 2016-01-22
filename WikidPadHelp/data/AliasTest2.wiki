@@ -1,0 +1,5 @@
+﻿++ Alias Test2
+
+[test: AliasTest]
+[alias: AliasTest] todo.bug: error for double defined of alias <<(AliasTest is alias for both AliasTest1 and AliasTest2)>>
+[global.AliasTest.icon:beer]

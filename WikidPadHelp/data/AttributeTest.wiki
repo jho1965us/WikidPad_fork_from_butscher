@@ -1,0 +1,49 @@
+﻿++ Attribute Test
+
+[test:]
+
++++ Parent SingleChild Merge
+[test.AttributeTest.SingleChildParent1.SingleChild: SingleValue]
+[test.AttributeTest.SingleChildParent2.SingleChild: Value1]
+[test.AttributeTest.SingleChildParent2.SingleChild: Value2]
+[test.AttributeTest.SingleChildParent3.SingleChild.GrandChild1: Value1]
+[test.AttributeTest.SingleChildParent3.SingleChild.GrandChild1: Value2]
+[test.AttributeTest.SingleChildParent3.SingleChild.GrandChild2: Value1]
+[test.AttributeTest.SingleChildParent3.SingleChild.GrandChild2: Value2]
+
++++ Name tree_position
+[test.AttributeTest.NameTreePosition.1: Value]
+[test.AttributeTest.NameTreePosition.2: Value]
+[test.AttributeTest.NameTreePosition.3: Value]
+[test.AttributeTest.NameTreePosition.ExplicitPositioned: Value]
+
+[global.attr.test.AttributeTest.NameTreePosition.ExplicitPositioned.tree_position: 2]
+
++++ Value tree_position
+[test.AttributeTest.ValueTreePosition: 1]
+[test.AttributeTest.ValueTreePosition: 2]
+[test.AttributeTest.ValueTreePosition: 3]
+[test.AttributeTest.ValueTreePosition: ExplicitPositioned]
+
+[global.attr-value.test.AttributeTest.ValueTreePosition.ExplicitPositioned.tree_position: 2]
+
++++ Parent SingleChild Merge and tree_position
+[test.AttributeTest.SingleChildParent2b.SingleChild: Value1]
+[test.AttributeTest.SingleChildParent2b.SingleChild: Value2]
+[test.AttributeTest.SingleChildParent2b.SingleChild: ValuePositioned]
+
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChild1: Value1]
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChild1: Value2]
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChild2: Value1]
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChild2: Value2]
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChildPositioned: Value1]
+[test.AttributeTest.SingleChildParent3b.SingleChild.GrandChildPositioned: Value2]
+
+[global.attr-value.test.AttributeTest.SingleChildParent2b.SingleChild.ValuePositioned.tree_position: 2]
+[global.attr.test.AttributeTest.SingleChildParent3b.SingleChild.GrandChildPositioned.tree_position: 2]
+
++++ Show global attributes with suffix-name nodes also as ref under icon name
+
+[global.test.icon: graduate]
+
++++ .

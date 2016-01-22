@@ -75,6 +75,8 @@ Then just start typing text with WikiWords to create your wiki.
     * WikiLockFile
     * ApiDocs / WikidPadHooks
     * ThirdPartyLibraries
+    
+    * [Tests]
 
 Email mbutscher@gmx.de or wikidpad@jhorman.org if you have additional questions.
 

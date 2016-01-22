@@ -306,7 +306,10 @@ class WikiWordNode(AbstractNode):
         wikiPage = wikiDataManager.getWikiPageNoError(self.wikiWord)
 
         style = NodeStyle()
-        
+
+        if not wikiData.isDefinedWikiLink(self.wikiWord):
+            style.icon = u"page-empty";  # todo should this be enforced even if a template specifes some other image? 
+
         style.label = baselabel
 
         # Has children?
@@ -689,24 +692,72 @@ class TodoNode(AbstractNode):
 
         return super(TodoNode, self).onActivated()
 
+    def getTodos(self):
+        """
+        override this in subclass that has filtered the todos to be shown
+        """
+        wikiData = self.treeCtrl.pWiki.getWikiData()
+        return wikiData.getTodos()
+
+    def _getTodoNode(self, cats):
+        return TodoNode(self.treeCtrl, self, cats)
+
+    def _getChildNode(self, c, catsList):
+        cats = self.categories + (c,)
+
+        if not self.treeCtrl.pWiki.getConfig().getboolean("main", "tree_parentSingleChildMerge", False): #TODO cache flag value
+            return self._getTodoNode(cats)
+
+        #check for shared path
+        first = catsList[0][1].split(u".") + [catsList[0][2]]  # TODO "." is Language dependent: Remove
+        start = len(self.categories)+1
+        stop = len(first)
+        max = stop
+        min = stop
+        for i in range(1, len(catsList)):
+            next = catsList[i][1].split(u".") + [catsList[i][2]]  # TODO "." is Language dependent: Remove
+            if max < len(next):
+                max = len(next)
+            if min > len(next):
+                min = len(next)
+            for j in range(start, stop):
+                if j >= len(next) or first[j] != next[j]:
+                    stop = j
+                    break
+
+        for j in range(start, stop):
+            cats += (first[j],)
+        result = self._getTodoNode(cats)
+
+        if start < stop:
+            # shared path longer than one found
+            if stop == max:
+                result.label = u".".join(first[len(self.categories):-1])+ u": " + first[-1]
+            #elif stop >= min:
+            #    # ambiguity 'x.y: z' or 'x.y.z'?
+            #    result.label = u".".join(first[start:-2])+ u": " + first[:-1]
+            else:
+                result.label = u".".join(first[len(self.categories):stop])
+
+        return result
 
     def listChildren(self):
         """
         Returns a sequence of Nodes for the children of this node.
         This is called before expanding the node
         """
-        wikiData = self.treeCtrl.pWiki.getWikiData()
-        addedTodoSubCategories = []
+        addedCats = {}
         addedWords = []
-        for (wikiWord, todoKey, todoValue) in wikiData.getTodos():
+        for todo in self.getTodos():
+            wikiWord, todoKey, todoValue = todo
             # parse the todo for name and value
             wikiDocument = self.treeCtrl.pWiki.getWikiDocument()
 #             langHelper = wx.GetApp().createWikiLanguageHelper(
 #                     wikiDocument.getWikiDefaultWikiLanguage())
-# 
+#
 #             node = langHelper.parseTodoEntry(todo, wikiDocument)
 #             if node is not None:
-                
+
             keyComponents = todoKey.split(u".")  # TODO Language dependent: Remove
             entryCats = tuple(keyComponents + [todoValue])
 
@@ -723,8 +774,11 @@ class TodoNode(AbstractNode):
 
                 nextSubCategory = entryCats[len(self.categories)]
 
-                if nextSubCategory not in addedTodoSubCategories:
-                    addedTodoSubCategories.append(nextSubCategory)
+                if nextSubCategory not in addedCats:
+                    addedCats[nextSubCategory] = []
+                addedCats[nextSubCategory].append(todo)
+
+        addedTodoSubCategories = list(addedCats.keys())
 
         collator = self.treeCtrl.pWiki.getCollator()
         
@@ -745,7 +799,7 @@ class TodoNode(AbstractNode):
 
         result = []
         # First list real categories, then right sides, then words
-        result += [TodoNode(self.treeCtrl, self, self.categories + (c,))
+        result += [self._getChildNode(c, addedCats[c])
                 for c in addedTodoSubCategories]
 
 #         result += [TodoNode(self.treeCtrl, self, self.categories + (c,),
@@ -770,6 +824,24 @@ class TodoNode(AbstractNode):
         """
         return AbstractNode.nodeEquality(self, other) and \
                 self.categories == other.categories
+
+
+class AttrValueTodoSearchNode(TodoNode):
+
+    __slots__ = ("attrValueNode", "todos")
+
+    def __init__(self, tree, parentNode, cats, attrValueNode, todos):
+        TodoNode.__init__(self, tree, parentNode, cats)
+        self.attrValueNode = attrValueNode
+        self.todos = todos
+        # todo self.attrValueNode.unifiedName ends with an attribute value i.e. may contains extra dots and slashes i.e. resulting unifiedName maybe is not unique
+        self.unifiedName = self.attrValueNode.unifiedName + u"/" + self.unifiedName
+
+    def getTodos(self):
+        return self.todos
+
+    def _getTodoNode(self, cats):
+        return AttrValueTodoSearchNode(self.treeCtrl, self, cats, self.attrValueNode, self.todos)
 
 
 class WikiWordTodoSearchNode(WikiWordRelabelNode):
@@ -808,6 +880,50 @@ class WikiWordTodoSearchNode(WikiWordRelabelNode):
             return
 
 
+def AttrArrange(prefix, names, treeCtrl):
+    positioned = []
+    other = []
+    globalAttrs = treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+
+    # Put names into their appropriate arrays
+    for name in names:
+        tree_position = globalAttrs.get(u"global.%s%s.tree_position" % (prefix, name), None)
+        try:
+            if tree_position is not None:
+                positioned.append((int(tree_position) - 1, name))
+            else:
+                other.append(name)
+        except:
+            other.append(name)
+
+    # Sort special arrays
+    positioned.sort(key=lambda t: t[0])
+
+    result = []
+    ipo = 0
+    iot = 0
+
+    for i in xrange(len(names)):
+        if ipo < len(positioned) and positioned[ipo][0] <= i:
+            result.append(positioned[ipo][1])
+            ipo += 1
+            continue
+            
+        if iot < len(other):
+            result.append(other[iot])
+            iot += 1
+            continue
+            
+        # When reaching this, only positioned can have elements yet
+        if ipo < len(positioned):
+            result.append(positioned[ipo][1])
+            ipo += 1
+            continue
+            
+        raise InternalError("Empty attribute sorting arrays")
+    
+    return result
+
 
 class AttrCategoryNode(AbstractNode):
     """
@@ -816,27 +932,52 @@ class AttrCategoryNode(AbstractNode):
 
     __slots__ = ("categories", "propIcon")
 
-    def __init__(self, tree, parentNode, cats, attributeIcon=u"page"):
+    def __init__(self, tree, parentNode, cats, attributeIcon=u"tag-empty"):
         AbstractNode.__init__(self, tree, parentNode)
         self.categories = cats
         self.propIcon = attributeIcon
         self.unifiedName = u"helpernode/propcategory/" + \
                 u".".join(self.categories)
 
+    def getName(self):
+        return u".".join(self.categories)
+
     def getNodePresentation(self):   # TODO Retrieve prop icon here
         style = NodeStyle()
         globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
         key = u".".join(self.categories)
-        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), u"page")
+        attributeIcon = self.propIcon
+        attributeIcon = globalAttrs.get(u"global.%s.icon" % (key), attributeIcon) # for backward compatibility
 
-        style.icon = attributeIcon   # u"page"  # self.propIcon
+        style.icon = attributeIcon   # u"tag-empy"  # self.propIcon
+        for p in _SETTABLE_ATTRS:
+            v = globalAttrs.get(u"global.attr.%s.%s" % (key, p), getattr(style, p))
+            if v is not None:
+                setattr(style, p, v)
         style.label = self.categories[-1]
         style.hasChildren = True
         return style
 
+    def _getAttrCategoryNode(self, c):
+        name = c
+        result = AttrCategoryNode(self.treeCtrl, self, self.categories + (name,))
+        
+        if not self.treeCtrl.pWiki.getConfig().getboolean("main", "tree_parentSingleChildMerge", False): #TODO cache flag value
+            return result
+
+        while True:
+            (value, type) = result._isSingleChild()
+            if type == u"value":
+                return AttrCategoryValueNode(self.treeCtrl, self, self.categories + (name,), value)
+            if type != u"child":
+                return result
+            name += u"." + value
+            result = AttrCategoryCategoryNode(self.treeCtrl, self, self.categories + (name,))
+
     def listChildren(self):
         wikiData = self.treeCtrl.pWiki.getWikiData()
         wikiDocument = self.treeCtrl.pWiki.getWikiDocument()
+        globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
 
         result = []
         key = u".".join(self.categories + (u"",))
@@ -849,15 +990,37 @@ class AttrCategoryNode(AbstractNode):
 
             nextcat = name.split(u".", 1)[0]
             addedSubCategories.add(nextcat)
-            
+
+        # and subcategories from stuff like global.myAttribute.icon
+        # this is has effect in case e.g. there are some [global.myAttribute.icon: myIcon] attributes but no [icon: something] attribute
+        if len(self.categories) is 0:
+            for attr in _SETTABLE_ATTRS:
+                # only search all global attributes if this attr is not already in the set
+                if attr not in addedSubCategories:
+                    suffix = "." + attr
+                    for gaKey in globalAttrs:
+                        if gaKey.endswith(suffix):
+                            addedSubCategories.add(attr)
+
         subCats = list(addedSubCategories)
         self.treeCtrl.pWiki.getCollator().sort(subCats)
-        result += map(lambda c: AttrCategoryNode(self.treeCtrl, self,
-                self.categories + (c,)), subCats)
-                
+        subCats = AttrArrange(u"attr." + key, subCats, self.treeCtrl)
+        result.extend(map(lambda c: self._getAttrCategoryNode(c), subCats))
+
         # Now the values:
         vals = wikiDocument.getDistinctAttributeValuesByKey(u".".join(self.categories))
+
+        # and values from stuff like global.myAttribute.icon
+        if len(self.categories) is 1 and self.categories[0] in _SETTABLE_ATTRS:
+            vals = set(vals)
+            suffix = "." + self.categories[0]
+            for gaKey in globalAttrs:
+                if gaKey.endswith(suffix):
+                    vals.add(globalAttrs[gaKey])
+            vals = list(vals)
+
         self.treeCtrl.pWiki.getCollator().sort(vals)
+        vals = AttrArrange(u"attr-value." + key, vals, self.treeCtrl)
 
         for v in vals:
             vn = AttrValueNode(self.treeCtrl, self, self.categories, v)
@@ -876,7 +1039,53 @@ class AttrCategoryNode(AbstractNode):
             result = result[0].listChildren()
 
         return result
-        
+
+    def _isSingleChild(self):
+        wikiData = self.treeCtrl.pWiki.getWikiData()
+        wikiDocument = self.treeCtrl.pWiki.getWikiDocument()
+        globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+
+        child = None
+        key = u".".join(self.categories + (u"",))
+
+        # Start with subcategories
+        for name in wikiData.getAttributeNamesStartingWith(key):
+            cats = name[len(key):].split(u".", 2)
+            if child is None:
+                # Cut off uninteresting
+                child = cats[0]
+            elif child != cats[0]:
+                return (None, None)
+
+        if child is None:
+            allowedVals = 1
+        else:
+            allowedVals = 0
+
+        # Now the values:
+        vals = wikiDocument.getDistinctAttributeValuesByKey(self.getName())
+        if len(vals) > allowedVals:
+            return (None, None)
+        vals = set(vals)
+        # and values from stuff like global.myAttribute.icon
+        if len(self.categories) is 1 and self.categories[0] in _SETTABLE_ATTRS:
+            suffix = "." + self.categories[0]
+            for gaKey in globalAttrs:
+                if gaKey.endswith(suffix):
+                    vals.add(globalAttrs[gaKey])
+                    if len(vals) > allowedVals:
+                        return (None, None)
+
+        if len(vals) == 1:
+            value = list(vals)[0]
+            if value == u'': # and vals[0] != u'true':
+                # special tree layout not compatible with parent single child merge
+                return (None, None)
+            return (value, u"value")
+        if child is not None:
+            return (child, u"child")
+        return (None, None)
+
 
     def onActivated(self):
         children = self.listChildren()
@@ -899,6 +1108,19 @@ class AttrCategoryNode(AbstractNode):
                 self.categories == other.categories
 
 
+class AttrCategoryCategoryNode(AttrCategoryNode):
+    """
+    Represent an AttrCategoryNode and its only AttrCategoryNode descendant
+    """
+    def __init__(self, tree, parentNode, cats, attributeIcon=u"tag-3-stack-empty"):
+        AttrCategoryNode.__init__(self, tree, parentNode, cats, attributeIcon)
+
+    #def getNodePresentation(self):
+    #    style = AttrCategoryNode.getNodePresentation(self)
+    #    style.label = self.categories[-1]
+    #    return style
+
+
 class AttrValueNode(AbstractNode):
     """
     Node representing a attribute value. Children are WikiWordSearchNode's
@@ -906,7 +1128,7 @@ class AttrValueNode(AbstractNode):
     
     __slots__ = ("categories", "value", "propIcon")
             
-    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"page"):
+    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"tag"):
         AbstractNode.__init__(self, tree, parentNode)
         self.categories = cats
         self.value = value
@@ -919,7 +1141,20 @@ class AttrValueNode(AbstractNode):
 
     def getNodePresentation(self):
         style = NodeStyle()
-        style.icon = u"page"
+        globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+        key = u".".join(self.categories)
+        keyValue = key
+        if self.value is not None:
+            keyValue = key + u"." + self.value;
+        attributeIcon = self.propIcon
+        attributeIcon = globalAttrs.get(u"global.%s.icon" % (keyValue), attributeIcon) # for backward compatibility
+
+        style.icon = attributeIcon   # u"tag"  # self.propIcon
+        for p in _SETTABLE_ATTRS:
+            v = globalAttrs.get(u"global.attr-value.%s.%s" % (key, p), getattr(style, p))
+            v = globalAttrs.get(u"global.attr-value.%s.%s" % (keyValue, p), v)
+            if v is not None:
+                setattr(style, p, v)
         style.label = self.value
         style.hasChildren = True
         return style
@@ -932,9 +1167,23 @@ class AttrValueNode(AbstractNode):
         words = list(set(w for w,k,v in wikiDocument.getAttributeTriples(
                 None, key, self.value)))
         self.treeCtrl.pWiki.getCollator().sort(words)                
-        return [WikiWordAttributeSearchNode(self.treeCtrl, self, w,
+        result = [WikiWordAttributeSearchNode(self.treeCtrl, self, w,
                 key, self.value) for w in words]
 
+
+        # and values from stuff like global.myAttribute.icon
+        if len(self.categories) is 1 and self.categories[0] in _SETTABLE_ATTRS:
+            globalAttrs = self.treeCtrl.pWiki.getWikiData().getGlobalAttributes()
+            gaKeys = []
+            suffix = "." + self.categories[0]
+            for gaKey in globalAttrs:
+                if gaKey.endswith(suffix) and globalAttrs[gaKey] == self.value:
+                    gaKeys.append(gaKey)
+            self.treeCtrl.pWiki.getCollator().sort(gaKeys)
+            result.extend([AttrValueAttributeSearchNode(self.treeCtrl, self, gaK,
+                        self.value) for gaK in gaKeys])
+
+        return result
 
     def onActivated(self):
         children = self.listChildren()
@@ -952,6 +1201,35 @@ class AttrValueNode(AbstractNode):
         return AbstractNode.nodeEquality(self, other) and \
                 self.categories == other.categories and \
                 self.value == other.value
+
+
+# todo merge common parent nodes
+class AttrValueAttributeSearchNode(AttrValueNode):
+    def __init__(self, tree, parentNode, gaKey, value, attributeIcon=u"tag-3-stack-ref"):
+        AttrValueNode.__init__(self, tree, parentNode, gaKey.split(u"."), value, attributeIcon)
+        self.unifiedName = u"helpernode/propvalue/" + \
+                u".".join(self.categories) + u"/" + self.value + u"/" + gaKey
+        self.globalAttributeKey = gaKey
+
+    def getNodePresentation(self):
+        style = AttrValueNode.getNodePresentation(self)
+        style.label = self.globalAttributeKey
+        return style
+
+
+class AttrCategoryValueNode(AttrValueNode):
+    """
+    Represent an AttrCategoryNode and its only AttrValueNode descendant
+    """
+    def __init__(self, tree, parentNode, cats, value, attributeIcon=u"tag-3-stack"):
+        AttrValueNode.__init__(self, tree, parentNode, cats, value, attributeIcon)
+        self.label = self.categories[-1] + u": " + self.value
+        self.unifiedName = u"helpernode/propvalue/" + u".".join(self.categories) + u": " + self.value
+
+    def getNodePresentation(self):
+        style = AttrValueNode.getNodePresentation(self)
+        style.label = self.label
+        return style
 
 
 class WikiWordAttributeSearchNode(WikiWordRelabelNode):
@@ -1536,7 +1814,7 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
                 if currentDoc:
                     if currentDoc.getWikiPageNameForLinkTermOrAsIs(node.getWikiWord()) ==\
                         currentWikiWord:  #  and currentWikiWord is not None:
-                    return  # Is already on word -> nothing to do
+                        return  # Is already on word -> nothing to do
 #                 if currentWikiWord is None:
 #                     self.Unselect()
 #                     return

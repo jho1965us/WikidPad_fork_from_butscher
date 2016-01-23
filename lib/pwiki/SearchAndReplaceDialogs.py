@@ -154,6 +154,8 @@ class SearchResultListBox(wx.HtmlListBox, MiscEventSourceMixin):
                 self.OnActivateNewTabThis)
         wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_TAB_BACKGROUND_THIS,
                 self.OnActivateNewTabBackgroundThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_WINDOW_THIS,
+                self.OnActivateNewWindowThis)
 
 
     def OnGetItem(self, i):
@@ -619,6 +621,24 @@ class SearchResultListBox(wx.HtmlListBox, MiscEventSourceMixin):
             if info.occPos[0] != -1:
                 presenter.getSubControl("textedit").showSelectionByCharPos(
                         info.occPos[0], info.occPos[1])
+
+
+    def OnActivateNewWindowThis(self, evt):
+        if self.contextMenuSelection > -1:
+            info = self.foundinfo[self.contextMenuSelection]
+
+#             presenter = self.pWiki.activateWikiWord(info.wikiWord, 3)
+            presenter = self.pWiki.activatePageByUnifiedName(
+                    u"wikipage/" + info.wikiWord, 6)
+            
+            if presenter is None:
+                return
+
+            if info.occPos[0] != -1:
+                presenter.getSubControl("textedit").showSelectionByCharPos(
+                        info.occPos[0], info.occPos[1])
+            
+            #TODO: jens: put new window in foreground
 
 
 class SearchPageDialog(wx.Dialog):
@@ -2629,6 +2649,7 @@ u"""
 Activate;CMD_ACTIVATE_THIS
 Activate New Tab;CMD_ACTIVATE_NEW_TAB_THIS
 Activate New Tab Backgrd.;CMD_ACTIVATE_NEW_TAB_BACKGROUND_THIS
+Activate New Window;CMD_ACTIVATE_NEW_WINDOW_THIS
 """
 
 # Entries to support i18n of context menus
@@ -2636,3 +2657,4 @@ if False:
     N_(u"Activate")
     N_(u"Activate New Tab")
     N_(u"Activate New Tab Backgrd.")
+    N_(u"Activate New Window")

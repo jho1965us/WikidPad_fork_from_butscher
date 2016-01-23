@@ -1686,6 +1686,8 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
                 self.OnPrependWikiWord)
         wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_TAB_THIS,
                 self.OnActivateNewTabThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_WINDOW_THIS,
+                self.OnActivateNewWindowThis)
         wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_URL_TO_THIS_WIKIWORD,
                 self.OnCmdClipboardCopyUrlToThisWikiWord)
                 
@@ -2325,6 +2327,19 @@ class WikiTreeCtrl(customtreectrl.CustomTreeCtrl):          # wxTreeCtrl):
         if self.pWiki.getConfig().getboolean("main", "tree_autohide", False):
             # Auto-hide tree
             self.pWiki.setShowTreeControl(False)
+
+
+    def OnActivateNewWindowThis(self, evt):
+        wikiWord = self.GetPyData(self.contextMenuNode).getWikiWord()
+        presenter = self.pWiki.createNewDocPagePresenterTabInNewFrame(wikiWord)
+        presenter.openWikiPage(wikiWord)
+        presenter.getMainControl().getMainAreaPanel().\
+                        showPresenter(presenter)
+        #todo select tree node on same location in new windows tree
+        if self.pWiki.getConfig().getboolean("main", "tree_autohide", False):
+            # Auto-hide tree
+            self.pWiki.setShowTreeControl(False)
+            #todo auto hide new window tree too
 
 
     def OnCmdClipboardCopyUrlToThisWikiWord(self, evt):

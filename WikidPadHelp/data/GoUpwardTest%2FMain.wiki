@@ -1,0 +1,10 @@
+﻿++ Go Upward Test/Main
+
+[test: GoUpwardTest]
+[alias:..]
+
+Go to any of the child pages, then pressing up arrow toolbar button [:iconimage:tb_up] should bring you back to this page
+
+[/Child1]
+[Child2]
+[Child3]

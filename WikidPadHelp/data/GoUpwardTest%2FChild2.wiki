@@ -1,0 +1,3 @@
+﻿++ Go Upward Test/Child2
+
+testing

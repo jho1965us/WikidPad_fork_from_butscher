@@ -534,18 +534,36 @@ class DocPagePresenter(wx.Panel, BasicDocPagePresenter, StorablePerspective):
         if wikiWord is None:
             return
 
+        wikiDoc = self.getWikiDocument()
         langHelper = wx.GetApp().createWikiLanguageHelper(
-                self.getWikiDocument().getWikiDefaultWikiLanguage())
+                wikiDoc.getWikiDefaultWikiLanguage())
 
         wikiPath = langHelper.createWikiLinkPathObject(pageName=wikiWord)
-        wikiPath.join(langHelper.createWikiLinkPathObject(upwardCount=1))
-        
-        upwardPageName = wikiPath.resolveWikiWord(None)
-        
-        if not upwardPageName or wikiWord == upwardPageName:
-            # No way upward
-            # TODO: Maybe alternative reaction?
-            return
+        i = 0
+        while i < 99:
+            i = i + 1
+            wikiPath.join(langHelper.createWikiLinkPathObject(upwardCount=1))
+
+            upwardPageName = wikiPath.resolveWikiWord(None)
+
+            if not upwardPageName:
+                # No way upward
+                # TODO: Maybe alternative reaction?
+                return
+
+            if not wikiDoc.isDefinedWikiPageName(upwardPageName):
+                trueUpwardWikiWord = wikiDoc.getWikiPageNameForLinkTermOrAsIs(upwardPageName)
+                if trueUpwardWikiWord == wikiWord or not wikiDoc.isDefinedWikiPageName(trueUpwardWikiWord):
+                    # wikiWord have an [alias:..] or an equivalent alias, skip one additional level
+                    # since we are in a loop this also work for [alias: ../..], [alias: ..; ../..] etc.
+                    continue
+
+            if wikiWord == upwardPageName:
+                # No way upward
+                # TODO: Maybe alternative reaction?
+                return
+
+            break
 
         # motion type "parent" isn't exactly right but a good guess
         self.openWikiPage(upwardPageName, motionType="parent")

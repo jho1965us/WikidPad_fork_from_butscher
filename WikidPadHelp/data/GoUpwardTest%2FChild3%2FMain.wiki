@@ -1,0 +1,3 @@
+﻿++ Go Upward Test/Child3/Main
+
+[alias:..]

@@ -2150,7 +2150,7 @@ class WikiTxtCtrl(SearchableScintillaControl):
                     if tabMode == 6:
                         # New Window
                         presenter = self.presenter.getMainControl().\
-                                createNewDocPagePresenterTabInNewFrame(pretendWikiWord)
+                                createNewDocPagePresenterTabInNewFrame(node.wikiWord)
                     else:
                         # New tab
                         presenter = self.presenter.getMainControl().\

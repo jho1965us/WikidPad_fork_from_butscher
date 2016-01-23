@@ -2702,7 +2702,7 @@ camelCaseWordsEnabled: false;a=[camelCaseWordsEnabled: false]\\n
         return self.mainAreaPanel.appendPresenterTab(presenter)
 
 
-    def createNewDocPagePresenterTabInNewFrame(self):
+    def createNewDocPagePresenterTabInNewFrame(self, wikiWord = None):
         """
         Launches a new wikidpad instance, create a DocPagePresenter in it
         and return it. Works only if wiki is loaded already
@@ -2714,9 +2714,16 @@ camelCaseWordsEnabled: false;a=[camelCaseWordsEnabled: false]\\n
         clAction = CmdLineAction([])
         clAction.inheritFrom(self.getCmdLineAction())
         clAction.wikiToOpen = wd.getWikiConfigPath()
-        clAction.wikiWordsToOpen = ()
+        if wikiWord:
+            clAction.wikiWordsToOpen = (wikiWord,)
+        else:
+            # keep supporting unsuplied wikiWord arg for backward compatibility
+            # calling this method without wikiWord will open additional pages though
+            clAction.wikiWordsToOpen = ()
 
         newFrame = wx.GetApp().startPersonalWikiFrame(clAction)
+        if wikiWord is not None and newFrame.mainAreaPanel.getCurrentPresenter():
+            return newFrame.mainAreaPanel.getCurrentPresenter()
         return newFrame.createNewDocPagePresenterTab()
 
 
@@ -3810,7 +3817,7 @@ camelCaseWordsEnabled: false;a=[camelCaseWordsEnabled: false]\\n
                 #??
                 #presenter = self.presenter.getMainControl().\
                 #        createNewDocPagePresenterTabInNewFrame()
-                presenter = self.createNewDocPagePresenterTabInNewFrame()
+                presenter = self.createNewDocPagePresenterTabInNewFrame(unifName)
             else:
                 # New tab
                 presenter = self.createNewDocPagePresenterTab()

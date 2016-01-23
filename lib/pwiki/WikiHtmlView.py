@@ -548,7 +548,7 @@ class WikiHtmlView(wx.html.HtmlWindow):
                 if tabMode == 6:
                     # New Window
                     presenter = self.presenter.getMainControl().\
-                            createNewDocPagePresenterTabInNewFrame()
+                            createNewDocPagePresenterTabInNewFrame(word)
                 else:
                     # New tab
                     presenter = self.presenter.getMainControl().\

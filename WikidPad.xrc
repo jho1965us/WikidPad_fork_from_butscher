@@ -5466,6 +5466,10 @@
       <label>Activate New Tab</label>
       <help>Show wiki word in a new tab</help>
     </object>
+    <object class="wxMenuItem" name="CMD_ACTIVATE_NEW_WINDOW_THIS">
+      <label>Activate New Window</label>
+      <help>Show wiki word in a new window</help>
+    </object>
     <object class="wxMenuItem" name="CMD_RENAME_THIS_WIKIWORD">
       <label>Rename</label>
       <help>Rename</help>

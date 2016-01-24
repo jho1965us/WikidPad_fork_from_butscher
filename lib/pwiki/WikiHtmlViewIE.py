@@ -38,12 +38,12 @@ if False:
 
 from WikiExceptions import *
 from wxHelper import getAccelPairFromKeyDown, copyTextToClipboard, GUI_ID, \
-        wxKeyFunctionSink
+        wxKeyFunctionSink, appendToMenuByMenuDesc
 
 from MiscEvent import KeyFunctionSink
 
 from StringOps import uniToGui, utf8Enc, utf8Dec, pathEnc, urlFromPathname, \
-        urlQuote, pathnameFromUrl, flexibleUrlUnquote
+        urlQuote, pathnameFromUrl, flexibleUrlUnquote, longPathEnc
 
 import DocPages
 from TempFileSet import TempFileSet
@@ -171,6 +171,19 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
 
         wx.EVT_SET_FOCUS(self, self.OnSetFocus)
 #         EVT_MOUSEWHEEL(self, self.OnMouseWheel)
+
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_THIS, self.OnActivateThis)        
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_TAB_THIS,
+                self.OnActivateNewTabThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_TAB_BACKGROUND_THIS,
+                self.OnActivateNewTabBackgroundThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_ACTIVATE_NEW_WINDOW_THIS,
+                self.OnActivateNewWindowThis)
+        wx.EVT_MENU(self, GUI_ID.CMD_CLIPBOARD_COPY_LINK_WORD,
+                self.OnClipboardCopyLinkWord)
+
+        wx.EVT_MENU(self, GUI_ID.CMD_OPEN_CONTAINING_FOLDER_THIS,
+                self.OnOpenContainingFolderThis)
 
 
     def setLayerVisible(self, vis, scName=""):
@@ -490,6 +503,23 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
                     u"mouse/leftdoubleclick/preview/body", paramDict)
             Cancel[0] = True
 
+        elif href.startswith(internaljumpPrefix + u"mouse/contextmenu/preview/body?"):
+            temp = href.split(u"?",1)[1]
+            args = {}
+            while not temp.startswith(u"href="):
+                temp2 = temp.split(u"&",1)
+                pair = temp2[0].split(u"=",1)
+                args[pair[0]] = pair[1]
+                if len(temp2) == 2:
+                    temp = temp2[1]
+                else:
+                    temp = u""
+                    break
+            if temp.startswith(u"href="):
+                args[u"href"] = temp.split(u"=",1)[1]
+            self.ShowContextMenu(args)
+            Cancel[0] = True
+
         elif href.startswith(u"file:"):
             hrefSplit = href.split("#", 1)
             hrefNoFragment = hrefSplit[0]
@@ -539,6 +569,153 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
                     uniToGui(status), 0)
 
 
+    def ShowContextMenu(self, args):
+        href = args.get("href")
+        id = args.get("id")
+        self.contextHref = href
+
+        menu = wx.Menu()
+        if href:
+            if self.drivingMoz:
+                internaljumpPrefix = u"file://internaljump/wikipage/"
+            else:
+                internaljumpPrefix = u"http://internaljump/wikipage/"
+
+            if href.startswith(internaljumpPrefix):
+                appendToMenuByMenuDesc(menu, _CONTEXT_MENU_INTERNAL_JUMP)
+            else:
+                appendToMenuByMenuDesc(menu, u"Activate;CMD_ACTIVATE_THIS")
+                
+                if href.startswith(u"file:") or \
+                        href.startswith(u"rel://"):
+
+                    appendToMenuByMenuDesc(menu,
+                            u"Open Containing Folder;"
+                            u"CMD_OPEN_CONTAINING_FOLDER_THIS")
+
+        screenX = int(args["screenX"])
+        screenY = int(args["screenY"])
+        x,y = self.ScreenToClientXY(screenX, screenY)
+        self.PopupMenuXY(menu, x, y)
+
+
+    def _activateLink(self, href, tabMode=0):
+        """
+        Called if link was activated by clicking in the context menu, 
+        therefore only links starting with "internaljump:wikipage/" can be
+        handled.
+        tabMode -- 0:Same tab; 2: new tab in foreground; 3: new tab in background
+        """
+        if self.drivingMoz:
+            internaljumpPrefix = u"file://internaljump/"
+        else:
+            internaljumpPrefix = u"http://internaljump/"
+
+        if href.startswith(internaljumpPrefix + u"wikipage/"):
+            wikiPageRef = href[len(internaljumpPrefix) + 9:]
+            if tabMode == 1024:
+                # hack to copy content of dot node
+                copyTextToClipboard(wikiPageRef)
+                return
+
+            # Jump to another wiki page
+            
+            # First check for an anchor. In URLs, anchors are always
+            # separated by '#' regardless which character is used
+            # in the wiki syntax (normally '!')
+            try:
+                word, anchor = wikiPageRef.split(u"#", 1)
+            except ValueError:
+                word = wikiPageRef
+                anchor = None
+
+            # open the wiki page
+            if tabMode & 8 and self.presenter.hasLastTrackedPresenter():
+                presenter = self.presenter.getLastTrackedPresenter()
+            elif tabMode & 2:
+                if tabMode == 6:
+                    # New Window
+                    presenter = self.presenter.getMainControl().\
+                            createNewDocPagePresenterTabInNewFrame(word)
+                else:
+                    # New tab
+                    presenter = self.presenter.getMainControl().\
+                            createNewDocPagePresenterTab()
+                    presenter.switchSubControl("preview", False)
+            else:
+                # Same tab
+                presenter = self.presenter
+
+            presenter.openWikiPage(word, motionType="child", anchor=anchor)
+
+            if not tabMode & 1:
+                # Show in foreground
+#                 presenter.switchSubControl("preview", True)
+                presenter.getMainControl().getMainAreaPanel().\
+                        showPresenter(presenter)
+                presenter.SetFocus()
+#             else:
+#                 presenter.switchSubControl("preview", False)
+            return presenter
+
+        elif href == internaljumpPrefix + u"action/history/back":
+            # Go back in history
+            self.presenter.getMainControl().goBrowserBack()
+
+        elif href.startswith(u"#"):
+            anchor = href[1:]
+            if self.HasAnchor(anchor):
+                self.ScrollToAnchor(anchor)
+                # Workaround because ScrollToAnchor scrolls too far
+                # Here the real scroll position is needed so
+                # getIntendedViewStart() is not called
+                lx, ly = self.GetViewStart()
+                self.scrollDeferred(lx, ly-1)
+            else:
+                self.scrollDeferred(0, 0)
+        else:
+            self.presenter.getMainControl().launchUrl(href)
+
+
+    def OnActivateThis(self, evt):
+        self._activateLink(self.contextHref, tabMode=0)
+
+    def OnActivateNewTabThis(self, evt):
+        self._activateLink(self.contextHref, tabMode=2)
+
+    def OnActivateNewTabBackgroundThis(self, evt):
+        self._activateLink(self.contextHref, tabMode=3)
+
+    def OnActivateNewWindowThis(self, evt):
+        self._activateLink(self.contextHref, tabMode=6)
+
+    def OnClipboardCopyLinkWord(self, evt):
+        self._activateLink(self.contextHref, tabMode=1024)
+
+
+    def OnOpenContainingFolderThis(self, evt):
+        if not self.contextHref:
+            return
+
+        link = self.contextHref
+
+        if link.startswith(u"rel://"):
+            link = self.presenter.getWikiDocument().makeRelUrlAbsolute(link)
+
+        if link.startswith(u"file:"):
+            try:
+                path = os.path.dirname(pathnameFromUrl(link))
+                if not os.path.exists(longPathEnc(path)):
+                    self.presenter.displayErrorMessage(
+                            _(u"Folder does not exist"))
+                    return
+
+                OsAbstract.startFile(self.presenter.getMainControl(),
+                        path)
+            except IOError:
+                pass   # Error message?
+
+
 #     def OnKeyUp(self, evt):
 #         acc = getAccelPairFromKeyDown(evt)
 #         if acc == (wxACCEL_CTRL, ord('C')):
@@ -580,3 +757,22 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
 #             evt.Skip()
 
 
+
+
+_CONTEXT_MENU_INTERNAL_JUMP = \
+u"""
+Activate;CMD_ACTIVATE_THIS
+Activate New Tab;CMD_ACTIVATE_NEW_TAB_THIS
+Activate New Tab Backgrd.;CMD_ACTIVATE_NEW_TAB_BACKGROUND_THIS
+Activate New Window;CMD_ACTIVATE_NEW_WINDOW_THIS
+Copy Word to Clipboard;CMD_CLIPBOARD_COPY_LINK_WORD
+"""
+
+
+# Entries to support i18n of context menus
+if False:
+    N_(u"Activate")
+    N_(u"Activate New Tab")
+    N_(u"Activate New Tab Backgrd.")
+    N_(u"Activate New Window")
+    N_(u"Copy Word to Clipboard")

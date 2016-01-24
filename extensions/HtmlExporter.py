@@ -1083,6 +1083,15 @@ class HtmlExporter(AbstractExporter):
         
         styleSheets = u"\n".join(styleSheets)
 
+        script = ""
+        if self.exportType in ("html_previewIE"):
+            script += u"""
+        <script type="text/javascript">
+            var internalJumpPrefix = "%s";
+        </script>
+        <script type="text/javascript" src="%s"></script>
+""" % (self._getInternaljumpPrefix(), join(self.mainControl.wikiAppDir, "lib/js/contextmenu.js"))
+
 #         styleSheet = self.styleSheet
         config = self.mainControl.getConfig()
         docType = config.get("main", "html_header_doctype",
@@ -1094,6 +1103,7 @@ class HtmlExporter(AbstractExporter):
         <meta http-equiv="content-type" content="text/html%(charSet)s">
         <title>%(title)s</title>
 %(styleSheets)s
+%(script)s
     </head>
 """ % locals()
 
@@ -1159,6 +1169,9 @@ class HtmlExporter(AbstractExporter):
 
         else:
             dblClick = ''
+
+        if self.exportType in ("html_previewIE"):
+            dblClick += u' oncontextmenu="return myOncontextmenu();"'
 
         # Build tagstring
         bodytag = u" ".join((linkcol, alinkcol, vlinkcol, textcol, bgcol, bgimg, dblClick))

@@ -134,7 +134,8 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
         self.anchor = None  # Name of anchor to jump to when view gets visible
         self.lastAnchor = None
         self.passNavigate = 0
-
+        self._scrollLeft = 0
+        self._scrollTop = 0
 
         # TODO Should be changed to presenter as controller
         self.exporterInstance = PluginManager.getExporterTypeDict(
@@ -232,6 +233,8 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
                 pass
             except AttributeError:
                 pass
+            except NameError: #todo seems like we call GetViewStart on an unloaded page, why? (this probaly coursed an AttributeError error before introducing setScrollLeft)
+                pass
 
         wikiPage = self.presenter.getDocPage()
         if isinstance(wikiPage,
@@ -280,10 +283,11 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
                 self.passNavigate += 1
 #                 self.RefreshPage(iewin.REFRESH_COMPLETELY)
 
-                lx, ly = self.GetViewStart()
+                #lx, ly = self.GetViewStart()
+                url = self._TryAddScrollSearch(url)
 
                 self.LoadUrl(url, iewin.NAV_NoReadFromCache | iewin.NAV_NoWriteToCache)
-                self.scrollDeferred(lx, ly)
+                #self.scrollDeferred(lx, ly)
             else:                        
                 self.currentLoadedWikiWord = word
 
@@ -318,6 +322,12 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
 
         ## _prof.stop()
 
+    def _TryAddScrollSearch(self, url, force = False):
+        urlParts = url.split("#", 2)
+        if len(urlParts) is 1 or urlParts[1] == "" or force:
+            lx, ly = self.GetViewStart()
+            return "%s?scrollLeft=%d&scrollTop=%d" % (urlParts[0], self._scrollLeft, self._scrollTop)
+        return url
 
 
     # IE ActiveX wx mapping
@@ -325,17 +335,26 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
         """
         Bridge IE ActiveX object to wx's ScrolledWindow.
         """
-        body = self.ctrl.Document.body
-        return (body.scrollLeft, body.scrollTop)
+        # old IE only
+        #body = self.ctrl.Document.body
+        #return (body.scrollLeft, body.scrollTop)
+
+        return self._scrollLeft, self._scrollTop
 
     def Scroll(self, x, y):
         """
         Bridge IE ActiveX object to wx's ScrolledWindow
         """
-        body = self.ctrl.Document.body
-        body.scrollLeft = x
-        body.scrollTop = y
+        # old IE only
+        #body = self.ctrl.Document.body
+        #body.scrollLeft = x
+        #body.scrollTop = y
 
+
+
+        url = self._TryAddScrollSearch(self.currentLoadedUrl, True)
+        self.LoadUrl(url, iewin.NAV_NoReadFromCache | iewin.NAV_NoWriteToCache)
+        pass
 
 
     def gotoAnchor(self, anchor):
@@ -415,7 +434,10 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
 
     def DownloadComplete(self, this):
         if self.deferredScrollPos is not None:
-            self.Scroll(self.deferredScrollPos[0], self.deferredScrollPos[1])
+            #we already set the scroll position from url 
+            # (setting a new url here is asking for infinity loop, but what happen is that an external browser window open)
+            #self.Scroll(self.deferredScrollPos[0], self.deferredScrollPos[1])
+            pass
 
 
     def OnSetFocus(self, evt):
@@ -518,6 +540,17 @@ class WikiHtmlViewIE(iewin.IEHtmlWindow):
             if temp.startswith(u"href="):
                 args[u"href"] = temp.split(u"=",1)[1]
             self.ShowContextMenu(args)
+            Cancel[0] = True
+
+        elif href.startswith(internaljumpPrefix + u"scrolled?"):
+            temp = href.split(u"?",1)[1]
+            temp2 = temp.split(u"&");
+            for tempPair in temp2:
+                pair = tempPair.split(u"=",1)
+                if pair[0] == "scrollTop":
+                    self._scrollTop = int(pair[1])
+                elif pair[0] == "scrollLeft":
+                    self._scrollLeft = int(pair[1])
             Cancel[0] = True
 
         elif href.startswith(u"file:"):

@@ -1172,6 +1172,7 @@ class HtmlExporter(AbstractExporter):
 
         if self.exportType in ("html_previewIE"):
             dblClick += u' oncontextmenu="return myOncontextmenu();"'
+            dblClick += u' onload="return myOnload();"'
 
         # Build tagstring
         bodytag = u" ".join((linkcol, alinkcol, vlinkcol, textcol, bgcol, bgimg, dblClick))
